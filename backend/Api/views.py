@@ -1,13 +1,55 @@
 from rest_framework.views import APIView
-from Api.models import Book
+from Api.models import User, Book , Genre, Author
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework import status
+from Api.serializers import SignUpSerializer
 import random
 import string
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
 from itertools import chain
 from django.db.models import Q
+
+
+
+def rand_ascii(size):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=size))
+
+
+
+class UserSecThrottle(UserRateThrottle):
+    scope = 'signup'
+
+
+class SignUp(APIView):
+    throttle_classes = [UserSecThrottle]
+
+    def post(self, request):
+        try:
+            ser = SignUpSerializer(data=request.data)
+            if not ser.is_valid():
+                return Response({"message": "مقادیر قابل قبول نیست"}, status=status.HTTP_400_BAD_REQUEST)
+            phone_number = request.data.get('phone_number')
+            username = request.data.get('username')
+            password = request.data.get('password')
+            position = request.data.get('position')
+            full_name = request.data.get('full_name')
+
+            if User.objects.filter(phone_number=phone_number).exists():
+                return Response({"message": "این شماره تلفن قبلا ثبت شده"}, status=status.HTTP_400_BAD_REQUEST)
+            if User.objects.filter(username=username).exists():
+                return Response({"message": "این نام کاربری قبلا ثبت شده"}, status=status.HTTP_400_BAD_REQUEST)
+            token = rand_ascii(100)
+            user = User.objects.create_user(username=username, token=token, full_name=full_name, phone_number=phone_number, position=position, password=password)
+
+            refresh = RefreshToken.for_user(user)
+
+            return Response({"access": str(refresh.access_token), "refresh": str(refresh)}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(e)
+
 
 
 class ShowAllBooksView(APIView):
@@ -17,6 +59,7 @@ class ShowAllBooksView(APIView):
         for book in books:
             data.append(
                 {
+                    'id': book.id,
                     'title': book.title,
                     'author': [a.full_name for a in book.author.all()],
                     'publisher': [p.full_name for p in book.publisher.all()],
@@ -25,7 +68,92 @@ class ShowAllBooksView(APIView):
                     'description': book.description
                 }
             )
-            
         return Response(data,status=status.HTTP_200_OK)
+
+
+
+class ShowSingleBook(APIView):
+    def get(self, request):
+        id = request.params.get('id')
+        book = Book.objects.filter(id=id)
+        data = []
+        for b in book:
+            data.append(
+                {
+                    'title': b.title,
+                    'author': [a.full_name for a in b.author.all()],
+                    'publisher': [p.full_name for p in b.publisher.all()],
+                    'translator': [t.full_name for t in b.translator.all()],
+                    'genre': [g.name for g in b.genre.all()],
+                    'page_count': b.page_count,
+                    'is_exist': b.is_exist,
+                    'edition_year': b.edition_year,
+                    'description': b.description,
+                    'content': b.content
+
+                }
+            )
+        return Response(data,status=status.HTTP_200_OK)
+
+
+class ShowAllGenre(APIView):
+    def get(self, request):
+        genres = Genre.objects.all()
+        data = []
+        for genre in genres:
+            data.append(
+                {
+                    'name': genre.name,
+                    'description' : genre.description
+                }
+            )
+        return Response(data,status=status.HTTP_200_OK)
+    
+
+
+class ShowSingleGenre(APIView):
+    def get(self, request):
+        id = request.params.get('id')
+        genre = Genre.objects.filter(id=id)
+        data = []
+        for g in genre:
+            data.append(
+                {
+                    'name': genre.name,
+                    'description' : genre.description
+                }
+            )
+        return Response(data,status=status.HTTP_200_OK)
+
+
+
+class ShowAllAuthor(APIView):
+    def get(self, request):
+        authors = Author.objects.all()
+        data = []
+        for author in authors:
+            data.append({
+                'full_name': author.full_name,
+                'pen_name': author.pen_name,
+                'description': author.description,
+            })
+        return Response(data,status=status.HTTP_200_OK)
+
+
+
+class ShowSingleAuthor(APIView):
+    def get(self, request):
+        id = request.params.get('id')
+        author = Author.objects.filter(id=id)
+        data = []
+        for g in author:
+            data.append({
+                'full_name': author.full_name,
+                'pen_name': author.pen_name,
+                'is_alive': author.is_alive,
+                'content': author.content,
+            })
+        return Response(data,status=status.HTTP_200_OK)
+
 
 

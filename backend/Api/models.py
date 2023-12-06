@@ -1,7 +1,9 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 
-class User(models.Model):
+
+class User(AbstractUser):
     pass
 
 class Author(models.Model):
@@ -48,7 +50,7 @@ class Book(models.Model):
     title = models.CharField(max_length=32) # max length is too low
     author = models.ManyToManyField(Author, related_name="books") # what is related_name?!
     publisher = models.ManyToManyField(Publisher, related_name="books") # what is related_name?!
-    translator = models.ManyToManyField(Translator, null=True)
+    translator = models.ManyToManyField(Translator)
     genre = models.ManyToManyField(Genre, related_name="books") # what is related_name?!
     page_count = models.IntegerField()
     is_exist = models.BooleanField()
