@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from itertools import chain
 from django.db.models import Q
+from django.shortcuts import get_object_or_404 
 
 
 
@@ -33,17 +34,17 @@ class SignUp(APIView):
             phone_number = request.data.get('phone_number')
             username = request.data.get('username')
             password = request.data.get('password')
-            position = request.data.get('position')
-            full_name = request.data.get('full_name')
+            email = request.data.get('email')
 
             if User.objects.filter(phone_number=phone_number).exists():
                 return Response({"message": "این شماره تلفن قبلا ثبت شده"}, status=status.HTTP_400_BAD_REQUEST)
             if User.objects.filter(username=username).exists():
                 return Response({"message": "این نام کاربری قبلا ثبت شده"}, status=status.HTTP_400_BAD_REQUEST)
             token = rand_ascii(100)
-            user = User.objects.create_user(username=username, token=token, full_name=full_name, phone_number=phone_number, position=position, password=password)
+            user = User.objects.create_user(username=username, token=token, phone_number=phone_number, email=email, password=password)
 
             refresh = RefreshToken.for_user(user)
+
 
             return Response({"access": str(refresh.access_token), "refresh": str(refresh)}, status=status.HTTP_200_OK)
 
@@ -157,3 +158,74 @@ class ShowSingleAuthor(APIView):
 
 
 
+class Amin(APIView):
+    authentication_classes = [IsAuthenticated, ]
+    
+    def post(self, request):
+        username = request.user.username
+        id = request.data.get('id')
+
+        user = get_object_or_404(User, username=username)
+        book = get_object_or_404(Book, id=id)
+
+        user.shopcard.add(book)
+
+        return Response(status=status.HTTP_200_OK)
+
+
+
+class Kaylan(APIView):
+    authentication_classes = [IsAuthenticated, ]
+    
+    def post(self, request):
+        username = request.user.username
+        id = request.data.get('id')
+
+        user = get_object_or_404(User, username=username)
+        book = get_object_or_404(Book, id=id)
+
+        user.shopcard.remove(book)
+
+        return Response(status=status.HTTP_200_OK)
+    
+
+
+class shopcard(APIView):
+    authentication_classes = [IsAuthenticated, ]
+
+    def post():
+        def post(self, request):
+
+            username = request.user.username
+
+            users = get_object_or_404(User, username=username)
+
+            books = users.shopcard.all()
+
+            data = []
+            for book in books:
+                data.append({
+                    'id': book.id,
+                    'title': book.title,
+                    'author': [a.full_name for a in book.author.all()],
+                    'publisher': [p.full_name for p in book.publisher.all()],
+                    'translator': [t.full_name for t in book.translator.all()],
+                    'genre': [g.name for g in book.genre.all()],
+                    'description': book.description,
+                    'price': book.price
+                })
+
+            total_price = 0
+            for book in data:
+                total_price += book.get('price')
+            
+
+            Number_of_books_in_the_shopcart = len(data)
+            
+
+            return Response({'status': 'ok', 'data': data, 'total_price': total_price, 'Number_of_books_in_the_shopcart': Number_of_books_in_the_shopcart}, status=status.HTTP_200_OK)
+
+
+
+class Gateway(APIView):
+    pass

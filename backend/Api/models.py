@@ -4,7 +4,13 @@ from django.contrib.auth.models import AbstractUser
 
 
 class User(AbstractUser):
-    pass
+    token = models.CharField(max_length=128, null=True)
+    phone_number = models.CharField(max_length=16, null=True)
+    shopcard = models.ManyToManyField('Book', related_name="users")
+    address = models.CharField(max_length=64, null=True)
+    email = models.CharField(max_length=64, null=True)
+    is_manager = models.BooleanField(default=False)
+
 
 class Author(models.Model):
     full_name = models.CharField(max_length=32)
@@ -58,6 +64,7 @@ class Book(models.Model):
     edition_year = models.CharField(max_length=32)
     description = models.TextField()
     content = models.TextField()
+    price = models.IntegerField()
 
     def __str__(self):
         return self.title
