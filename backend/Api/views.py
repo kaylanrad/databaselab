@@ -1,5 +1,5 @@
 from rest_framework.views import APIView
-from Api.models import User, Book , Genre, Author
+from Api.models import User, Book , Genre, Author, GateWay
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework import status
@@ -75,7 +75,7 @@ class ShowAllBooksView(APIView):
 
 class ShowSingleBook(APIView):
     def get(self, request):
-        id = request.params.get('id')
+        id = request.query_params.get('id')
         book = Book.objects.filter(id=id)
         data = []
         for b in book:
@@ -97,6 +97,7 @@ class ShowSingleBook(APIView):
         return Response(data,status=status.HTTP_200_OK)
 
 
+
 class ShowAllGenre(APIView):
     def get(self, request):
         genres = Genre.objects.all()
@@ -114,14 +115,14 @@ class ShowAllGenre(APIView):
 
 class ShowSingleGenre(APIView):
     def get(self, request):
-        id = request.params.get('id')
+        id = request.query_params.get('id')
         genre = Genre.objects.filter(id=id)
         data = []
         for g in genre:
             data.append(
                 {
-                    'name': genre.name,
-                    'description' : genre.description
+                    'name': g.name,
+                    'description' : g.description
                 }
             )
         return Response(data,status=status.HTTP_200_OK)
@@ -144,22 +145,22 @@ class ShowAllAuthor(APIView):
 
 class ShowSingleAuthor(APIView):
     def get(self, request):
-        id = request.params.get('id')
+        id = request.query_params.get('id')
         author = Author.objects.filter(id=id)
         data = []
-        for g in author:
+        for a in author:
             data.append({
-                'full_name': author.full_name,
-                'pen_name': author.pen_name,
-                'is_alive': author.is_alive,
-                'content': author.content,
+                'full_name': a.full_name,
+                'pen_name': a.pen_name,
+                'is_alive': a.is_alive,
+                'content': a.content,
             })
         return Response(data,status=status.HTTP_200_OK)
 
 
 
-class Amin(APIView):
-    authentication_classes = [IsAuthenticated, ]
+class AddToShopcard(APIView):
+    permission_classes = [IsAuthenticated]
     
     def post(self, request):
         username = request.user.username
@@ -174,8 +175,8 @@ class Amin(APIView):
 
 
 
-class Kaylan(APIView):
-    authentication_classes = [IsAuthenticated, ]
+class RemoveFromShopcard(APIView):
+    permission_classes = [IsAuthenticated]
     
     def post(self, request):
         username = request.user.username
@@ -190,42 +191,76 @@ class Kaylan(APIView):
     
 
 
-class shopcard(APIView):
-    authentication_classes = [IsAuthenticated, ]
+class ShowShopcard(APIView):
+    permission_classes = [IsAuthenticated]
 
-    def post():
-        def post(self, request):
+    def post(self, request):
+        username = request.user.username
+        users = get_object_or_404(User, username=username)
+        books = users.shopcard.all()
 
-            username = request.user.username
+        data = []
+        for book in books:
+            data.append({
+                'id': book.id,
+                'title': book.title,
+                'author': [a.full_name for a in book.author.all()],
+                'publisher': [p.full_name for p in book.publisher.all()],
+                'translator': [t.full_name for t in book.translator.all()],
+                'genre': [g.name for g in book.genre.all()],
+                'description': book.description,
+                'price': book.price
+            })
 
-            users = get_object_or_404(User, username=username)
+        total_price = 0
+        for prc in data:
+            total_price += prc.get('price')
 
-            books = users.shopcard.all()
+        Number_of_books_in_the_shopcart = len(data)         
 
-            data = []
-            for book in books:
-                data.append({
-                    'id': book.id,
-                    'title': book.title,
-                    'author': [a.full_name for a in book.author.all()],
-                    'publisher': [p.full_name for p in book.publisher.all()],
-                    'translator': [t.full_name for t in book.translator.all()],
-                    'genre': [g.name for g in book.genre.all()],
-                    'description': book.description,
-                    'price': book.price
-                })
-
-            total_price = 0
-            for book in data:
-                total_price += book.get('price')
-            
-
-            Number_of_books_in_the_shopcart = len(data)
-            
-
-            return Response({'status': 'ok', 'data': data, 'total_price': total_price, 'Number_of_books_in_the_shopcart': Number_of_books_in_the_shopcart}, status=status.HTTP_200_OK)
+        return Response({'status': 'ok', 'data': data, 'total_price': total_price, 'Number_of_books_in_the_shopcart': Number_of_books_in_the_shopcart}, status=status.HTTP_200_OK)
 
 
 
-class Gateway(APIView):
-    pass
+class CreateFactor(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        username = request.user.username
+        users = get_object_or_404(User, username=username)
+
+        books = users.shopcard.all()
+
+        data = []
+        for book in books:
+            data.append({
+                'id': book.id,
+                'price': book.price
+            })
+
+        total_price = 0
+        for prc in data:
+            total_price += prc.get('price')
+    
+        GateWay.objects.create(user=users, price=total_price)
+        return Response(status=status.HTTP_200_OK)
+
+
+
+class PayFactor(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        username = request.user.username
+        users = get_object_or_404(User, username=username)
+        id = request.data.get('id')
+
+        factor = get_object_or_404(GateWay, id=id)
+
+        if factor.user == users:
+            factor.is_paid = True
+            factor.save()
+        else:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+        return Response(status=status.HTTP_200_OK)

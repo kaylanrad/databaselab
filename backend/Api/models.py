@@ -64,9 +64,13 @@ class Book(models.Model):
     edition_year = models.CharField(max_length=32)
     description = models.TextField()
     content = models.TextField()
-    price = models.IntegerField()
+    price = models.IntegerField(default=0)
 
     def __str__(self):
         return self.title
 
 
+class GateWay(models.Model):
+    price = models.IntegerField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    is_paid = models.BooleanField(default=False)

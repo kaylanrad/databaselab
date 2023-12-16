@@ -1,5 +1,5 @@
 from django.contrib import admin
-from Api.models import Book, Author, Publisher, Genre, Translator
+from Api.models import Book, Author, Publisher, Genre, Translator, User, GateWay
 
 
 class AuthorAdmin(admin.ModelAdmin):
@@ -20,8 +20,17 @@ class PublisherAdmin(admin.ModelAdmin):
 class TranslatorAdmin(admin.ModelAdmin):
     list_display = ('full_name', 'translate_lang')
 
+
+
+class GateWayAdmin(admin.ModelAdmin):
+    list_display = ('user', 'price','is_paid')
+
+
+
 admin.site.register(Book)
 admin.site.register(Author,AuthorAdmin)
 admin.site.register(Genre,GenreAdmin)
 admin.site.register(Publisher,PublisherAdmin)
 admin.site.register(Translator,TranslatorAdmin)
+admin.site.register(User)
+admin.site.register(GateWay, GateWayAdmin)
